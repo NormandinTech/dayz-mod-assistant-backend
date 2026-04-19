@@ -17,10 +17,7 @@ function chunkText(text, size) {
   var current = '';
   for (var i = 0; i < lines.length; i++) {
     current += lines[i] + '\n';
-    if (current.length >= size) {
-      chunks.push(current.trim());
-      current = '';
-    }
+    if (current.length >= size) { chunks.push(current.trim()); current = ''; }
   }
   if (current.trim()) chunks.push(current.trim());
   return chunks;
@@ -36,13 +33,14 @@ module.exports = async function handler(req, res) {
     if (!filename || !content) return res.status(400).json({ error: 'Missing filename or content' });
 
     var supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    var ext = filename.split('.').pop().toLowerCase();
 
-    // Check cooldown — skip if file contributed in last 24h
+    // Check cooldown
     var since = new Date(Date.now() - COOLDOWN_HOURS * 60 * 60 * 1000).toISOString();
     var { data: existing } = await supabase
       .from('knowledge_chunks')
       .select('id')
-      .eq('filename', filename)
+      .eq('source_file', filename)
       .gte('created_at', since)
       .limit(1);
 
@@ -50,10 +48,9 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, skipped: true, stored: 0 });
     }
 
-    // Chunk and store
     var chunks = chunkText(content.slice(0, 50000), CHUNK_SIZE);
-    var rows = chunks.map(function(chunk, i) {
-      return { filename: filename, chunk_index: i, content: chunk };
+    var rows = chunks.map(function(chunk) {
+      return { content: chunk, source_file: filename, file_ext: ext };
     });
 
     var { error } = await supabase.from('knowledge_chunks').insert(rows);
