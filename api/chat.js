@@ -74,7 +74,7 @@ module.exports = async function handler(req, res) {
 
     for await(const chunk of stream){
       if(chunk.type==='content_block_delta'&&chunk.delta.type==='text_delta'){
-        res.write('data: '+JSON.stringify({delta:chunk.delta.text})+'\n\n');
+        res.write('data: '+JSON.stringify({type:'content_block_delta',delta:{text:chunk.delta.text}})+'\n\n');
       }
     }
 
